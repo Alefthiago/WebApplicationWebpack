@@ -1,0 +1,1 @@
+$(document).ready((function(){function t(){const t=new Date,e=`${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}:${String(t.getSeconds()).padStart(2,"0")}`;$("#relogio").text(e)}t(),setInterval(t,500)}));

@@ -1,0 +1,53 @@
+﻿@{
+    ViewData["Title"] = "Consulta Cep";
+}
+<style>
+    table {
+        width: 50%;
+        margin: 20px auto;
+        border-collapse: collapse;
+        text-align: left;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+    th {
+        background-color: #f4f4f4;
+        font-weight: bold;
+    }
+    input {
+        margin: 20px auto;
+        display: block;
+        padding: 8px;
+        width: 200px;
+        text-align: center;
+    }
+</style>
+<div class="text-center">
+    <h2 style="text-align: center;">Consulta CEP</h2>
+
+    <form id="formCep">
+        <!-- Campo para inserir o CEP -->
+        <input type="text" id="cep" placeholder="Digite o CEP" maxlength="9">
+        <input type="submit" id="btnFormCep" value="Consultar" />
+    </form>
+
+    <!-- Tabela onde os dados serão exibidos -->
+    <table>
+        <thead>
+            <tr>
+                <th>CEP</th>
+                <th>Logradouro</th>
+                <th>Bairro</th>
+                <th>Cidade</th>
+                <th>UF</th>
+            </tr>
+        </thead>
+        <tbody id="tabela-dados">
+            <tr>
+                <td colspan="5" style="text-align: center;">Nenhum dado carregado.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
