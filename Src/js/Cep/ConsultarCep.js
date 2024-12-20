@@ -1,5 +1,5 @@
 ﻿$(document).ready(function () {
-
+    alert('Consulta cep')
     $form = $('#formCep');
     $form.submit(function (e) {
         e.preventDefault();

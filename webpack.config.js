@@ -1,38 +1,70 @@
-﻿//      VARIAVEIS.      //
+﻿// VARIÁVEIS
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const glob = require('glob');
 const path = require('path');
-//     /VARIAVEIS.      //
+// /VARIÁVEIS
 
-//      MAPEAMENTO DOS ARQUIVOS.        //
+// MAPEAMENTO DOS ARQUIVOS
 function groupEntriesByFolder(pattern) {
-    let entries = {};
+    let entries = {
+        general: {},       // Arquivos gerais
+        controllers: {},   // Arquivos gerais do controller
+        views: {}          // Arquivos específicos da view
+    };
     let files = glob.sync(pattern);
 
     files.forEach((file) => {
-        //console.log(file);
-        let folderName = path.dirname(file).split(path.sep).pop();
-        let fileName = path.basename(file, path.extname(file));
+        let relativePath = path.relative('./Src/js', file); // Caminho relativo a partir de Src/js
+        let parts = relativePath.split(path.sep);           // Quebra o caminho em partes
+        let fileName = path.basename(file, path.extname(file)); // Nome do arquivo sem extensão
 
-        if (!entries[folderName]) {
-            entries[folderName] = {};
+        if (parts.length === 1) {
+            // Arquivos gerais que devem ser carregados em todas as views
+            entries.general[fileName] = path.resolve(__dirname, file);
+        } else if (parts.length === 2) {
+            // Arquivos gerais do controller
+            let controllerName = parts[0];
+            if (!entries.controllers[controllerName]) {
+                entries.controllers[controllerName] = {};
+            }
+            entries.controllers[controllerName][fileName] = path.resolve(__dirname, file);
+        } else if (parts.length >= 3) {
+            // Arquivos específicos da view
+            let controllerName = parts[0];
+            let viewName = parts[1];
+            if (!entries.views[controllerName]) {
+                entries.views[controllerName] = {};
+            }
+            if (!entries.views[controllerName][viewName]) {
+                entries.views[controllerName][viewName] = {};
+            }
+            entries.views[controllerName][viewName][fileName] = path.resolve(__dirname, file);
         }
-        entries[folderName][fileName] = path.resolve(__dirname, file);
     });
     return entries;
 }
-//     /MAPEAMENTO DOS ARQUIVOS.        //
+// /MAPEAMENTO DOS ARQUIVOS
 
 const groupedEntries = groupEntriesByFolder('./Src/js/**/*.js');
-const flatEntries = Object.keys(groupedEntries).reduce((acc, folder) => {
-    Object.keys(groupedEntries[folder]).forEach((file) => {
-        acc[`${folder}/${file}`] = groupedEntries[folder][file];
-    });
-    return acc;
-}, {});
+const flatEntries = {
+    ...groupedEntries.general,
+    ...Object.keys(groupedEntries.controllers).reduce((acc, controller) => {
+        Object.keys(groupedEntries.controllers[controller]).forEach((file) => {
+            acc[`${controller}/${file}`] = groupedEntries.controllers[controller][file];
+        });
+        return acc;
+    }, {}),
+    ...Object.keys(groupedEntries.views).reduce((acc, controller) => {
+        Object.keys(groupedEntries.views[controller]).forEach((view) => {
+            Object.keys(groupedEntries.views[controller][view]).forEach((file) => {
+                acc[`${controller}/${view}/${file}`] = groupedEntries.views[controller][view][file];
+            });
+        });
+        return acc;
+    }, {})
+};
 
-//console.log(flatEntries);
 module.exports = {
     mode: 'production',
     entry: flatEntries,
@@ -49,7 +81,7 @@ module.exports = {
         port: 5000,
         open: false,
         devMiddleware: {
-            writeToDisk: (filePath) => filePath.endsWith('.js') || filePath.endsWith('.cshtml'), // Permitir que os arquivos sejam gravados no disco
+            writeToDisk: (filePath) => filePath.endsWith('.js') || filePath.endsWith('.cshtml'),
         },
         proxy: [
             {
@@ -62,30 +94,45 @@ module.exports = {
     },
     plugins: [
         new CleanWebpackPlugin(),
-        ...Object.keys(groupedEntries).map((folderName) => {
-            let outputPath;
-            //console.log(folderName);
-            if (folderName === 'js') {
-                outputPath = path.resolve(__dirname, './Views/Shared/Components/Webpack/index.cshtml');
-            } else {
-                outputPath = path.resolve(
-                    __dirname,
-                    `./Views/Shared/Components/Webpack/${folderName}/index.cshtml`
-                );
-            }
-            //console.log(outputPath)
+        // Tags dos scripts gerais para todas as views
+        new HtmlWebpackPlugin({
+            inject: false,
+            templateContent: ({ htmlWebpackPlugin }) => {
+                const scripts = Object.keys(groupedEntries.general)
+                    .map((fileName) => {
+                        const jsPath = htmlWebpackPlugin.files.js.find((jsPath) =>
+                            jsPath.includes(`/${fileName}.bundle.js`)
+                        );
+
+                        if (jsPath) {
+                            return `<script src="${jsPath.replace('/wwwroot', '')}"></script>`;
+                        } else {
+                            return `<!-- Script não encontrado para ${fileName} -->`;
+                        }
+                    })
+                    .join('\n');
+
+                return scripts || `<!-- Nenhum script encontrado -->`;
+            },
+            filename: path.resolve(__dirname, './Views/Shared/Components/Webpack/index.cshtml')
+        }),
+        // Tags dos scripts gerais do controller
+        ...Object.keys(groupedEntries.controllers).map((controllerName) => {
+            let outputPath = path.resolve(__dirname, `./Views/Shared/Components/Webpack/${controllerName}/index.cshtml`);
+
             return new HtmlWebpackPlugin({
                 inject: false,
                 templateContent: ({ htmlWebpackPlugin }) => {
-                    const scripts = Object.keys(groupedEntries[folderName])
+                    const scripts = Object.keys(groupedEntries.controllers[controllerName])
                         .map((fileName) => {
                             const jsPath = htmlWebpackPlugin.files.js.find((jsPath) =>
-                                jsPath.includes(`/${folderName}/${fileName}.bundle.js`)
+                                jsPath.includes(`/${controllerName}/${fileName}.bundle.js`)
                             );
 
-                            //console.log(jsPath)
                             if (jsPath) {
                                 return `<script src="${jsPath.replace('/wwwroot', '')}"></script>`;
+                            } else {
+                                return `<!-- Script não encontrado para ${controllerName}/${fileName} -->`;
                             }
                         })
                         .join('\n');
@@ -93,6 +140,34 @@ module.exports = {
                     return scripts || `<!-- Nenhum script encontrado -->`;
                 },
                 filename: outputPath,
+            });
+        }),
+        // Tags dos scripts exclusivos da view
+        ...Object.keys(groupedEntries.views).flatMap((controllerName) => {
+            return Object.keys(groupedEntries.views[controllerName]).map((viewName) => {
+                let outputPath = path.resolve(__dirname, `./Views/Shared/Components/Webpack/${controllerName}/${viewName}/index.cshtml`);
+
+                return new HtmlWebpackPlugin({
+                    inject: false,
+                    templateContent: ({ htmlWebpackPlugin }) => {
+                        const scripts = Object.keys(groupedEntries.views[controllerName][viewName])
+                            .map((fileName) => {
+                                const jsPath = htmlWebpackPlugin.files.js.find((jsPath) =>
+                                    jsPath.includes(`/${controllerName}/${viewName}/${fileName}.bundle.js`)
+                                );
+
+                                if (jsPath) {
+                                    return `<script src="${jsPath.replace('/wwwroot', '')}"></script>`;
+                                } else {
+                                    return `<!-- Script não encontrado para ${controllerName}/${viewName}/${fileName} -->`;
+                                }
+                            })
+                            .join('\n');
+
+                        return scripts || `<!-- Nenhum script encontrado -->`;
+                    },
+                    filename: outputPath,
+                });
             });
         }),
     ],

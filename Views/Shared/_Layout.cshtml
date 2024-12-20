@@ -22,14 +22,13 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
-                         <li class="nav-item">
+                        <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Cep" asp-action="Index">Consultar Cep</a>
                         </li>
                     </ul>
-
                     <span id="relogio">00:00:00</span>
                 </div>
             </div>
@@ -49,9 +48,10 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    
-    @await Component.InvokeAsync("Webpack", "Geral")
-    @await Component.InvokeAsync("Webpack")
+
+    @await Component.InvokeAsync("Webpack", 1)
+    @await Component.InvokeAsync("Webpack", 2)
+    @await Component.InvokeAsync("Webpack", 3)
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
