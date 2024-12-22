@@ -5,6 +5,9 @@ const glob = require('glob');
 const path = require('path');
 // /VARIÁVEIS
 
+const webpackControllerConfig = require('./webpack.controller.config');
+const webpackViewConfig = require('./webpack.view.config');
+
 // MAPEAMENTO DOS ARQUIVOS
 function groupEntriesByFolder(pattern) {
     let entries = {
@@ -117,58 +120,8 @@ module.exports = {
             filename: path.resolve(__dirname, './Views/Shared/Components/Webpack/index.cshtml')
         }),
         // Tags dos scripts gerais do controller
-        ...Object.keys(groupedEntries.controllers).map((controllerName) => {
-            let outputPath = path.resolve(__dirname, `./Views/Shared/Components/Webpack/${controllerName}/index.cshtml`);
-
-            return new HtmlWebpackPlugin({
-                inject: false,
-                templateContent: ({ htmlWebpackPlugin }) => {
-                    const scripts = Object.keys(groupedEntries.controllers[controllerName])
-                        .map((fileName) => {
-                            const jsPath = htmlWebpackPlugin.files.js.find((jsPath) =>
-                                jsPath.includes(`/${controllerName}/${fileName}.bundle.js`)
-                            );
-
-                            if (jsPath) {
-                                return `<script src="${jsPath.replace('/wwwroot', '')}"></script>`;
-                            } else {
-                                return `<!-- Script não encontrado para ${controllerName}/${fileName} -->`;
-                            }
-                        })
-                        .join('\n');
-
-                    return scripts || `<!-- Nenhum script encontrado -->`;
-                },
-                filename: outputPath,
-            });
-        }),
+        ...webpackControllerConfig(groupedEntries.controllers),
         // Tags dos scripts exclusivos da view
-        ...Object.keys(groupedEntries.views).flatMap((controllerName) => {
-            return Object.keys(groupedEntries.views[controllerName]).map((viewName) => {
-                let outputPath = path.resolve(__dirname, `./Views/Shared/Components/Webpack/${controllerName}/${viewName}/index.cshtml`);
-
-                return new HtmlWebpackPlugin({
-                    inject: false,
-                    templateContent: ({ htmlWebpackPlugin }) => {
-                        const scripts = Object.keys(groupedEntries.views[controllerName][viewName])
-                            .map((fileName) => {
-                                const jsPath = htmlWebpackPlugin.files.js.find((jsPath) =>
-                                    jsPath.includes(`/${controllerName}/${viewName}/${fileName}.bundle.js`)
-                                );
-
-                                if (jsPath) {
-                                    return `<script src="${jsPath.replace('/wwwroot', '')}"></script>`;
-                                } else {
-                                    return `<!-- Script não encontrado para ${controllerName}/${viewName}/${fileName} -->`;
-                                }
-                            })
-                            .join('\n');
-
-                        return scripts || `<!-- Nenhum script encontrado -->`;
-                    },
-                    filename: outputPath,
-                });
-            });
-        }),
+        ...webpackViewConfig(groupedEntries.views),
     ],
 };
